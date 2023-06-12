@@ -1,15 +1,18 @@
-#!/usr/bin/env python3
+from datetime import datetime
+start = datetime.now()
+
 import sys
 import os
 import argparse
 import pickle
+import resource
 
 # from fsct.run_tools import FSCT
-from fsct.other_parameters import other_parameters
-from fsct.tools import dict2class
-from fsct.preprocessing import Preprocessing
-from fsct.inference import SemanticSegmentation
-from fsct.segmentation import Segmentation
+from tls2trees.fsct.other_parameters import other_parameters
+from tls2trees.fsct.preprocessing import Preprocessing
+from tls2trees.fsct.inference import SemanticSegmentation
+from tls2trees.fsct.segmentation import Segmentation
+from tls2trees.tools import dict2class
 
 if __name__ == '__main__':
     
@@ -101,3 +104,6 @@ if __name__ == '__main__':
         params = SemanticSegmentation(params)
         params.steps_completed[1] = True
         pickle.dump(params, open(os.path.join(params.odir, f'{params.basename}.params.pickle'), 'wb'))
+    
+    if params.verbose: print(f'runtime: {(datetime.now() - start).seconds}')
+    if params.verbose: print(f'peak memory: {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1e6}')

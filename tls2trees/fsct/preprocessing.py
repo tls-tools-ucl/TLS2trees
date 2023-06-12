@@ -7,7 +7,7 @@ import pandas as pd
 from sklearn.neighbors import NearestNeighbors
 from tqdm import tqdm
 
-from fsct.tools import *
+from tls2trees.tools import *
 
 def save_pts(params, I, bx, by, bz):
 
