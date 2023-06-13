@@ -15,7 +15,7 @@ from scipy.interpolate import griddata
 from scipy import ndimage
 from tqdm import tqdm
 
-from fsct.io import ply_io, pcd_io
+from tls2trees.io import ply_io, pcd_io
 
 class dict2class:
 

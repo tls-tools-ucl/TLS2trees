@@ -14,9 +14,9 @@ from abc import ABC
 import torch
 import torch_geometric
 from torch_geometric.data import Dataset, DataLoader, Data
-from model import Net
+from fsct.model import Net
 
-from fsct.tools import save_file, make_dtm 
+from tls2trees.tools import save_file, make_dtm 
 
 sys.setrecursionlimit(10 ** 8) # Can be necessary for dealing with large point clouds.
 

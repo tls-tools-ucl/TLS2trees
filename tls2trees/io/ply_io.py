@@ -4,10 +4,16 @@ import sys
 
 def read_ply(fp, newline=None):
 
-    if (sys.version_info > (3, 0)):
-        open_file = open(fp, encoding='ISO-8859-1', newline='\n' if sys.platform == 'win32' else None)
-    else:
-        open_file = open(fp)
+    line = open(fp, encoding='ISO-8859-1').readline()
+    newline = '\n' if line == 'ply\n' else None
+
+    return read_ply_(fp, newline)
+    
+def read_ply_(fp, newline):
+
+    open_file = open(fp, 
+                     encoding='ISO-8859-1',
+                     newline=newline) 
 
     with open_file as ply:
  
@@ -17,7 +23,7 @@ def read_ply(fp, newline=None):
                      'float32':'f4', 'float': 'f4', 'uchar': 'B', 'int':'i'}
         dtype = []
         fmt = 'binary'
-    
+
         for i, line in enumerate(ply.readlines()):
             length += len(line)
             if i == 1:
@@ -77,3 +83,8 @@ def write_ply(output_name, pc, comments=[]):
 
     with open(output_name, 'ab') as ply:
         ply.write(pc[cols].to_records(index=False).tobytes()) 
+
+if __name__ == '__main__':
+
+    import sys
+    print(read_ply(sys.argv[1]).head())
