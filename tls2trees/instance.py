@@ -90,8 +90,7 @@ if __name__ == '__main__':
     parser.add_argument('--n-tiles', default=3, type=int, help='enlarges the number of tiles i.e. 3x3 or tiles or 5 x 5 tiles')
     parser.add_argument('--overlap', default=False, type=float, help='buffer to crop adjacent tiles')
     parser.add_argument('--slice-thickness', default=.2, type=float, help='slice thickness for constructing graph')
-    parser.add_argument('--find-stems-height', default=1.5, type=float, help='height for identifying stems')    
-    parser.add_argument('--find-stems-thickness', default=.5, type=float, help='thickness of slice used for identifying stems')
+    parser.add_argument('--find-stems-boundary', default=[1.5, 2.], nargs=2, type=float, help='boundary height for slice used for identifying stems: default [1.5, 2.]')    
     parser.add_argument('--find-stems-min-radius', default=.025, type=float, help='minimum radius of found stems')
     parser.add_argument('--find-stems-min-points', default=200, type=int, help='minimum number of points for found stems')
     parser.add_argument('--graph-edge-length', default=1, type=float, help='maximum distance used to connect points in graph')
@@ -207,6 +206,7 @@ if __name__ == '__main__':
     if params.verbose: print('fitting convex hulls to clusters')
     if params.pandarallel:
         chull = grouped.parallel_apply(cube) # parallel_apply only works witn pd < 1.3
+        print(chull)
     else:
         chull = grouped.apply(cube) # don't think works with Jasmin or parallel_apply only works witn pd < 1.3
     chull = chull.reset_index(drop=True) 
@@ -217,8 +217,8 @@ if __name__ == '__main__':
     skeleton.loc[:, 'dbh_node'] = False
 
     # dbh_nodes = skeleton.loc[skeleton.n_slice == params.slice_height].clstr
-    find_stems_min = int(params.find_stems_height // params.slice_thickness) 
-    find_stems_max = int((params.find_stems_height + params.find_stems_thickness) // params.slice_thickness)  + 1
+    find_stems_min = int(params.find_stems_boundary[0] // params.slice_thickness) 
+    find_stems_max = int(params.find_stems_boundary[1] // params.slice_thickness) + 1
     dbh_nodes_plus = skeleton.loc[skeleton.n_slice.between(find_stems_min, find_stems_max)].clstr
     dbh_slice = stem_pc.loc[stem_pc.clstr.isin(dbh_nodes_plus)]
 
@@ -337,7 +337,7 @@ if __name__ == '__main__':
         is_tip = wood_paths.set_index('clstr')['is_tip'].to_dict()
         chull = chull.loc[[False if np.isnan(s) else True for s in chull.stem]]
         chull.loc[:, 'is_tip'] = chull.clstr.map(is_tip)
-        chull = chull.loc[(chull.is_tip) & (chull.n_z > params.find_stems_height)]
+        chull = chull.loc[(chull.is_tip) & (chull.n_z > params.find_stems_boundary[0])]
         chull.loc[:, 'xlabel'] = 2
 
         # process leaf points
