@@ -1,16 +1,16 @@
-# TLS point cloud semantic classification and individual tree segmentation
+# `TLS2trees`: point cloud semantic classification and individual tree segmentation
 
-This repository describes methods to extract individual trees from TLS point clouds. This is done using a 3-step process
+`TLS2trees` segments individual trees from TLS point clouds. This is done using a 3-step process
 
 ### 1. rxp-pipeline
 
-This step preprocesses data captured with RIEGL VZ TLS data. Code and details can be found [here](https://github.com/philwilkes/rxp-pipeline). 
+This step preprocesses data captured with RIEGL VZ TLS data. Code and details can be found [here](https://github.com/tls-tools-ucl/rxp-pipeline). 
 
-### 2. FSCT _lite_
+### 2. Semantic segmentation with `semantic.py`
 
 This is forked from [@SKrisanski](https://github.com/SKrisanski/FSCT) and is a _lite_ version that only runs the semantic segmentation (ground, wood, leaf, cwd). Typical usage is:
 
-`python run.py -p <point_cloud> --tile-index <path_to_index> --buffer <buffer> --verbose`
+`python semantic.py -p <point_cloud> --tile-index <path_to_index> --buffer <buffer> --verbose`
 
 ```
 optional arguments:
@@ -34,11 +34,11 @@ optional arguments:
   --verbose             print stuff
   ```
 
-### 3. Instance segmentation to extract individual trees
+### 3. Instance segmentation with `instance.py`
 
 Following classification an instance segmenation can be run to seperate individual trees using:
 
-`python points2trees.py -t 001.downsample.segmented.ply --tindex ../tile_index.dat -o ../tmp/ --n-tiles 5 --slice-thickness .5 --find-stems-height 2 --find-stems-thickness .5 --pandarallel --verbose --add-leaves --add-leaves-voxel-length .5 --graph-maximum-cumulative-gap 3 --save-diameter-class --ignore-missing-tiles`
+`python instance.py -t 001.downsample.segmented.ply --tindex ../tile_index.dat -o ../clouds/ --n-tiles 5 --slice-thickness .5 --find-stems-boundary 2 2.5 --pandarallel --verbose --add-leaves --add-leaves-voxel-length .5 --graph-maximum-cumulative-gap 3 --save-diameter-class --ignore-missing-tiles`
 
 ```
 optional arguments:
@@ -47,13 +47,11 @@ optional arguments:
   --odir ODIR, -o ODIR  output directory
   --tindex TINDEX       path to tile index
   --n-tiles N_TILES     enlarges the number of tiles i.e. 3x3 or tiles or 5 x 5 tiles
+  --n-zeros             leading zeros for tile names
   --overlap OVERLAP     buffer to crop adjacent tiles
   --slice-thickness SLICE_THICKNESS
                         slice thickness for constructing graph
-  --find-stems-height FIND_STEMS_HEIGHT
-                        height for identifying stems
-  --find-stems-thickness FIND_STEMS_THICKNESS
-                        thickness of slice used for identifying stems
+  --find-stems-boundary boundary height for slice used for identifying stems: default [1.5, 2.]:w
   --find-stems-min-radius FIND_STEMS_MIN_RADIUS
                         minimum radius of found stems
   --find-stems-min-points FIND_STEMS_MIN_POINTS
@@ -85,8 +83,8 @@ docker build -t tls2trees:latest .
 ```
 Then to run FSCT and the instance segmentation use:
 ```
-docker run -it -v /path/to/data/outsidecontainer:/path/to/data/incontainer fsct:latest run.py
-docker run -it -v /path/to/data/outsidecontainer:/path/to/data/incontainer fsct:latest points2trees.py
+docker run -it -v /path/to/data/outsidecontainer:/path/to/data/incontainer fsct:latest semantic.py
+docker run -it -v /path/to/data/outsidecontainer:/path/to/data/incontainer fsct:latest instance.py
 ```
 
 For HPC systems, where you don't have permission to run Docker, you can build the container on your local machine and convert to a singularity file using:
@@ -96,6 +94,6 @@ sudo singularity build tls2trees_latest.sif docker-daemon://tls2trees:latest
 ```
 Copy this to the HPC system and run this using
 ```
-singularity exec tls2trees_latest.sif run.py
-singularity exec tls2trees_latest.sif points2trees.py
+singularity exec tls2trees_latest.sif semantic.py
+singularity exec tls2trees_latest.sif instance.py
 ```
