@@ -23,7 +23,7 @@ RUN	cd /usr/local/cuda-11.3/lib64/ && \
 RUN pip install -r /tmp/requirements.txt && rm /tmp/requirements.txt
 
 # Make sure scripts are excecutable
-RUN chmod a+x /opt/fsct/run.py /opt/fsct/points2trees.py
+RUN chmod a+x /opt/fsct/semantic.py /opt/fsct/instance.py
 
 # Set environmental variables
 ENV  LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-11.3/lib:/usr/local/cuda-11.3/lib64:/usr/local/cuda/compat
