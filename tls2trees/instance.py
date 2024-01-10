@@ -86,8 +86,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--tile', '-t', type=str, default='', required=True, help='fsct directory')
     parser.add_argument('--odir', '-o', type=str, required=True, help='output directory')
-    parser.add_argument('--tindex', type=str, required=True, help='path to tile index')
+    parser.add_argument('--tindex', type=str, help='path to tile index')
     parser.add_argument('--n-tiles', default=3, type=int, help='enlarges the number of tiles i.e. 3x3 or tiles or 5 x 5 tiles')
+    parser.add_argument('--n-zeros', default=3, type=int, help='leading zeros for tile names')
     parser.add_argument('--overlap', default=False, type=float, help='buffer to crop adjacent tiles')
     parser.add_argument('--slice-thickness', default=.2, type=float, help='slice thickness for constructing graph')
     parser.add_argument('--find-stems-boundary', default=[1.5, 2.], nargs=2, type=float, help='boundary height for slice used for identifying stems: default [1.5, 2.]')    
@@ -124,7 +125,9 @@ if __name__ == '__main__':
     xyz = ['x', 'y', 'z'] # shorthand
 
     params.dir, params.fn = os.path.split(params.tile)
-    params.n = int(params.fn.split('.')[0])
+    if params.tindex is not None:
+        params.n = int(params.fn.split('.')[0])
+    else: params.n = -1
 
     params.pc = ply_io.read_ply(params.tile)
     params.pc.loc[:, 'buffer'] = False
@@ -136,35 +139,37 @@ if __name__ == '__main__':
     bbox = dict2class(bbox)
 
     # neighbouring tiles to process
-    params.ti = pd.read_csv(params.tindex, 
-                            sep=' ', 
-                            names=['tile', 'x', 'y'])
-    n_tiles = NearestNeighbors(n_neighbors=len(params.ti)).fit(params.ti[['x', 'y']])
-    distance, indices = n_tiles.kneighbors(params.ti.loc[params.ti.tile == params.n][['x', 'y']])
-    # todo: this could be made smarter e.g. using distance
-    buffer_tiles = params.ti.loc[indices[0][1:params.n_tiles**2]]['tile'].values
-
-    for i, t in tqdm(enumerate(buffer_tiles),
-                     total=len(buffer_tiles),
-                     desc='read in neighbouring tiles', 
-                     disable=False if params.verbose else True):
-
-        try:
-            b_tile = glob.glob(os.path.join(params.dir, f'{t:03}*.ply'))[0]
-            tmp = ply_io.read_ply(b_tile)
-            if params.overlap:
-                tmp = tmp.loc[(tmp.x.between(bbox.xmin - params.overlap, bbox.xmax + params.overlap)) & 
-                              (tmp.y.between(bbox.ymin - params.overlap, bbox.ymax + params.overlap))]
-            if len(tmp) == 0: continue
-            tmp.loc[:, 'buffer'] = True
-            tmp.loc[:, 'fn'] = t
-            params.pc = params.pc.append(tmp, ignore_index=True)
-        except:
-            path = os.path.join(params.dir, f'{t:03}*.ply')
-            if params.ignore_missing_tiles:
-                print(f'tile {path} not available')
-            else:
-                raise Exception(f'tile {path} not available')
+    if params.tindex:   
+        params.ti = pd.read_csv(params.tindex, 
+                                sep=' ', 
+                                names=['tile', 'x', 'y'])
+        n_tiles = NearestNeighbors(n_neighbors=len(params.ti)).fit(params.ti[['x', 'y']])
+        distance, indices = n_tiles.kneighbors(params.ti.loc[params.ti.tile == params.n][['x', 'y']])
+        # todo: this could be made smarter e.g. using distance
+        buffer_tiles = params.ti.loc[indices[0][1:params.n_tiles**2]]['tile'].values
+    
+        for i, t in tqdm(enumerate(buffer_tiles),
+                         total=len(buffer_tiles),
+                         desc='read in neighbouring tiles', 
+                         disable=False if params.verbose else True):
+    
+            try:
+                b_tile = glob.glob(os.path.join(params.dir, f'{t:03}*.ply'))[0]
+                tmp = ply_io.read_ply(b_tile)
+                if params.overlap:
+                    tmp = tmp.loc[(tmp.x.between(bbox.xmin - params.overlap, bbox.xmax + params.overlap)) & 
+                                  (tmp.y.between(bbox.ymin - params.overlap, bbox.ymax + params.overlap))]
+                if len(tmp) == 0: continue
+                tmp.loc[:, 'buffer'] = True
+                tmp.loc[:, 'fn'] = t
+                params.pc = params.pc.append(tmp, ignore_index=True)
+            except:
+                n = str(t).zfill(params.n_zeros)
+                path = os.path.join(params.dir, f'{n}*.ply')
+                if params.ignore_missing_tiles:
+                    print(f'tile {path} not available')
+                else:
+                    raise Exception(f'tile {path} not available')
     
     # --- this can be dropeed soon --- 
     if 'nz' in params.pc.columns: params.pc.rename(columns={'nz':'n_z'}, inplace=True)
@@ -307,14 +312,16 @@ if __name__ == '__main__':
         if b == params.not_base: 
             continue
     
+        n = str(params.n).zfill(params.n_zeros)
+        
         if params.save_diameter_class:
             d_dir = f'{(dbh_cylinder.loc[b].radius * 2 // .1) / 10:.1f}'
             if not os.path.isdir(os.path.join(params.odir, d_dir)):
                 os.makedirs(os.path.join(params.odir, d_dir))
-            ply_io.write_ply(os.path.join(params.odir, d_dir, f'{params.n:03}_T{I}.leafoff.ply'), 
+            ply_io.write_ply(os.path.join(params.odir, d_dir, f'{n}_T{I}.leafoff.ply'), 
                              trees.loc[trees.t_clstr == b])  
         else:
-            ply_io.write_ply(os.path.join(params.odir, f'{params.n:03}_T{I}.leafoff.ply'), 
+            ply_io.write_ply(os.path.join(params.odir, f'{n}_T{I}.leafoff.ply'), 
                              trees.loc[trees.t_clstr == b])
         params.base_I[b] = I
         I += 1  
