@@ -28,6 +28,7 @@ if __name__ == '__main__':
     # if applying to tiled data
     parser.add_argument('--tile-index', default='', type=str, help='path to tile index in space delimited format "TILE X Y"')
     parser.add_argument('--buffer', default=0, type=float, help='included data from neighbouring tiles')
+    parser.add_argument('--zeros', default=3, type=int, help='number of leading zeros in tile names')
     
     # Set these appropriately for your hardware.
     parser.add_argument('--batch_size', default=10, type=int, help="If you get CUDA errors, try lowering this.")
@@ -43,7 +44,7 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', action='store_true', help="print stuff")
 
     params = parser.parse_args()
-    
+   
     ### sanity checks ###
     if params.point_cloud == '' and params.params == '':
         raise Exception('no input specified, use either --point-cloud or --params')
