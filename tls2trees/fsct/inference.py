@@ -46,8 +46,8 @@ def SemanticSegmentation(params):
     # if xyz is in global coords (e.g. when re-running) reset
     # coods to mean pos - required for acccurate running of 
     # torch 
-    if not np.all(np.isclose(params.pc.loc[~params.pc.buffer][['x', 'y', 'z']].mean(), [0, 0, 0], atol=.1)):
-        params.pc[['x', 'y', 'z']] -= params.global_shift
+    #if not np.all(np.isclose(params.pc.loc[~params.pc.buffer][['x', 'y', 'z']].mean(), [0, 0, 0], atol=.1)):
+    #    params.pc[['x', 'y', 'z']] -= params.global_shift
 
     if params.verbose: print('----- semantic segmentation started -----')
     params.sem_seg_start_time = time.time()
@@ -84,7 +84,7 @@ def SemanticSegmentation(params):
                 outputb = np.asarray(output[data.batch.cpu() == batch])
                 outputb[:, :3] = outputb[:, :3] + np.asarray(data.local_shift.cpu())[3 * batch:3 + (3 * batch)]
                 output_list.append(outputb)
-#             break
+            #break
 
         classified_pc = np.vstack(output_list)
 
@@ -119,7 +119,7 @@ def SemanticSegmentation(params):
    
     #idx = (params.pc.label == 1) & (params.pc.pWood > .12)
     #params.pc.loc[idx, 'label'] = params.stem_class
- 
+
     params.pc[['x', 'y', 'z']] += params.global_shift
 
     # calcualte height abouve ground and add ground normalised field
