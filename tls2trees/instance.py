@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
     params.dir, params.fn = os.path.split(params.tile)
     if params.tindex is not None:
-        params.n = int(params.fn.split('.')[0])
+        params.n = params.fn.split('.')[0]
     else: params.n = -1
 
     params.pc = ply_io.read_ply(params.tile)
@@ -142,42 +142,41 @@ if __name__ == '__main__':
     if params.tindex:   
         params.ti = pd.read_csv(params.tindex, 
                                 sep=' ', 
-                                names=['tile', 'x', 'y'])
+                                names=['tile', 'x', 'y', 'z', 'path'],
+                                dtype=str)
+        for col in ['x', 'y', 'z']: params.ti[col] = params.ti[col].astype(float)
         n_tiles = NearestNeighbors(n_neighbors=len(params.ti)).fit(params.ti[['x', 'y']])
         distance, indices = n_tiles.kneighbors(params.ti.loc[params.ti.tile == params.n][['x', 'y']])
         # todo: this could be made smarter e.g. using distance
-        buffer_tiles = params.ti.loc[indices[0][1:params.n_tiles**2]]['tile'].values
+        buffer_tiles = params.ti.loc[indices[0][1:params.n_tiles**2]]
     
-        for i, t in tqdm(enumerate(buffer_tiles),
+        for i, t in tqdm(enumerate(buffer_tiles.itertuples()),
                          total=len(buffer_tiles),
                          desc='read in neighbouring tiles', 
                          disable=False if params.verbose else True):
     
-            try:
-                b_tile = glob.glob(os.path.join(params.dir, f'{t:03}*.ply'))[0]
-                tmp = ply_io.read_ply(b_tile)
-                if params.overlap:
-                    tmp = tmp.loc[(tmp.x.between(bbox.xmin - params.overlap, bbox.xmax + params.overlap)) & 
-                                  (tmp.y.between(bbox.ymin - params.overlap, bbox.ymax + params.overlap))]
-                if len(tmp) == 0: continue
-                tmp.loc[:, 'buffer'] = True
-                tmp.loc[:, 'fn'] = t
-                params.pc = params.pc.append(tmp, ignore_index=True)
-            except:
-                n = str(t).zfill(params.n_zeros)
-                path = os.path.join(params.dir, f'{n}*.ply')
-                if params.ignore_missing_tiles:
-                    print(f'tile {path} not available')
-                else:
-                    raise Exception(f'tile {path} not available')
-    
-    # --- this can be dropeed soon --- 
-    if 'nz' in params.pc.columns: params.pc.rename(columns={'nz':'n_z'}, inplace=True)
-        
+            b_tile = glob.glob(os.path.join(params.dir, f'{t.tile}*.ply'))
+            if len(b_tile) == 0 and params.ignore_missing_tiles:
+                 print(f'tile {params.dir}/{t.tile}.ply not available')
+                 continue
+            elif len(b_tile) == 0:
+                 raise Exception(f'tile {params.dir}/{t.tile}.ply not available')
+            else: pass
+            tmp = ply_io.read_ply(b_tile[0])
+            if params.overlap:
+                tmp = tmp.loc[(tmp.x.between(bbox.xmin - params.overlap, bbox.xmax + params.overlap)) & 
+                              (tmp.y.between(bbox.ymin - params.overlap, bbox.ymax + params.overlap))]
+            if len(tmp) == 0: continue
+            tmp.loc[:, 'buffer'] = True
+            tmp.loc[:, 'fn'] = t.tile
+            params.pc = pd.concat([params.pc, tmp])
+ 
+    params.pc.reset_index(inplace=True)       
+ 
     # save space
     params.pc = params.pc[[c for c in ['x', 'y', 'z', 'n_z', 'label', 'buffer', 'fn']]]
     params.pc[['x', 'y', 'z', 'n_z']] = params.pc[['x', 'y', 'z', 'n_z']].astype(np.float32)
-    params.pc[['label', 'fn']] = params.pc[['label', 'fn']].astype(np.int16)
+    params.pc.label = params.pc.label.astype(np.int16)
 
     ### generate skeleton points
     if params.verbose: print('\n----- skeletonisation started -----')
@@ -312,7 +311,7 @@ if __name__ == '__main__':
         if b == params.not_base: 
             continue
     
-        n = str(params.n).zfill(params.n_zeros)
+        n = str(params.n)#.zfill(params.n_zeros)
         
         if params.save_diameter_class:
             d_dir = f'{(dbh_cylinder.loc[b].radius * 2 // .1) / 10:.1f}'
@@ -349,7 +348,7 @@ if __name__ == '__main__':
 
         # process leaf points
         lvs = params.pc.loc[(params.pc.label == 1) & (params.pc.n_z >= 2)].copy()
-        lvs = lvs.append(unlabelled_wood, ignore_index=True)
+        lvs = pd.concat([lvs, unlabelled_wood])
         lvs.reset_index(inplace=True)
 
         # voxelise
@@ -374,7 +373,7 @@ if __name__ == '__main__':
         cnrs.loc[:, 'VX'] = VX
 
         # and combine leaves and wood
-        branch_and_leaves = cnrs.append(chull[['x', 'y', 'z', 'label', 'stem', 'xlabel', 'clstr']])
+        branch_and_leaves = pd.concat([cnrs, chull[['x', 'y', 'z', 'label', 'stem', 'xlabel', 'clstr']]])
         branch_and_leaves.reset_index(inplace=True, drop=True)
 
         # find neighbouring branch and leaf points - used as entry points
@@ -417,7 +416,7 @@ if __name__ == '__main__':
 
             wood_fn = glob.glob(os.path.join(params.odir, 
                                              '*' if params.save_diameter_class else '', 
-                                             f'{params.n:03}_T{I}.leafoff.ply'))[0]
+                                             f'{params.n}_T{I}.leafoff.ply'))[0]
 
             stem = ply_io.read_ply(os.path.join(wood_fn))
             stem.loc[:, 'wood'] = 1
@@ -430,7 +429,7 @@ if __name__ == '__main__':
                 rgb = RGB.loc[RGB.t_clstr == lv][['red', 'green', 'blue']].values[0] * 1.2
                 l2a.loc[:, ['red', 'green', 'blue']] = [c if c <= 255 else 255 for c in rgb]
 
-                stem = stem.append(l2a[['x', 'y', 'z', 'label', 'red', 'green', 'blue', 't_clstr', 'wood', 'distance']])
+                stem = pd.concat([stem, l2a[['x', 'y', 'z', 'label', 'red', 'green', 'blue', 't_clstr', 'wood', 'distance']]])
 
             stem = stem.loc[~stem.duplicated()]
             ply_io.write_ply(wood_fn.replace('leafoff', 'leafon'), 
