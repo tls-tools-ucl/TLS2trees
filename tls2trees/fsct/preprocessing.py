@@ -31,7 +31,7 @@ def Preprocessing(params):
     params.basename = os.path.splitext(params.filename)[0]
     params.tile = params.filename.split('.')[0]
     params.input_format = os.path.splitext(params.point_cloud)[1]
-    if isinstance(params.tile, str) and len(params.tile) == 3: params.tile = int(params.tile)
+    #if isinstance(params.tile, str) and len(params.tile) == 3: params.tile = params.tile
 
     # create directory structure
     params = make_folder_structure(params)
@@ -50,7 +50,10 @@ def Preprocessing(params):
     params.pc.loc[:, 'buffer'] = False # might not be needed
     if params.buffer > 0:
         
-        tile_index = pd.read_csv(params.tile_index, sep=' ', names=['fname', 'x', 'y'])
+        tile_index = pd.read_csv(params.tile_index, sep=' ', 
+                                 names=['fname', 'x', 'y', 'z', 'path'], 
+                                 dtype=str)
+        for col in ['x', 'y', 'z']: tile_index[col] = tile_index[col].astype(float)
 
         # locate 8 nearest tiles
         nn = NearestNeighbors(n_neighbors=9).fit(tile_index[['x', 'y']])
@@ -64,8 +67,7 @@ def Preprocessing(params):
                          total=len(neighbours)-1,
                          desc='buffering tile with neighbouring points',
                          disable=False if params.verbose else True):
-            fname = glob.glob(os.path.join(params.directory, f'*{tile.fname:03}*{params.input_format}'))
-            if len(fname) > 0: buffer = buffer.append(load_file(os.path.join(params.directory, fname[0])))
+            buffer = pd.concat([buffer, load_file(tile.path)])
 
         # select desired points
         buffer = buffer.loc[(buffer.x.between(params.pc.x.min() - params.buffer, 
