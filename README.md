@@ -1,3 +1,6 @@
+_**PLEASE NOTE: THIS IS NOW AN ARCHIVE OF THE ORGINAL CODE, DEVELOPMENTS ARE HOSTED AT [https://github.com/tls-tools-ucl/TLS2trees](https://github.com/tls-tools-ucl/TLS2trees)**_
+
+
 # `TLS2trees`: point cloud semantic classification and individual tree segmentation
 
 `TLS2trees` segments individual trees from TLS point clouds. This is done using a 3-step process
